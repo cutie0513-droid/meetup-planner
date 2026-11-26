@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>모여라! 우리들의 약속 플래너</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Pretendard & Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      font-family: 'Noto Sans KR', 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #1e293b;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* 스터디 플래너 그리드 드래그 시 텍스트 선택 방지 */
+    .no-select {
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    /* 스크롤바 커스터마이징 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- 상단 네비게이션 바 -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-2.5 cursor-pointer" onclick="goHome()">
+        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-200">
+          <i data-lucide="calendar-heart" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg text-slate-900 leading-tight">우리들의 약속 플래너</h1>
+          <p class="text-[11px] text-slate-500 font-medium" id="connectionBadge">로컬 데모 모드</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="openSettingsModal()" class="p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition flex items-center gap-1.5 text-sm font-medium" title="구글 시트 연동 설정">
+          <i data-lucide="database" class="w-4 h-4 text-emerald-600"></i>
+          <span class="hidden sm:inline">시트 연동</span>
+        </button>
+        <button onclick="openAdminModal()" class="p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition flex items-center gap-1.5 text-sm font-medium" title="관리자 모드 (방 생성/삭제)">
+          <i data-lucide="shield-check" class="w-4 h-4 text-indigo-600"></i>
+          <span class="hidden sm:inline">관리자</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 컨테이너 -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-6">
+    
+    <!-- [화면 1] 모임 방 목록 (홈 화면) -->
+    <section id="homeView" class="space-y-6">
+      <div class="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl p-6 text-white shadow-lg shadow-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span class="inline-block px-2.5 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-xs font-semibold mb-2">실시간 모임 시간 조율</span>
+          <h2 class="text-2xl font-bold mb-1">혜민이가 답답해서 만든 날짜, 시간 잡기 프로그램</h2>
+          <p class="text-indigo-100 text-sm">참여할 모임 방을 선택하고, 가능한 날짜와 시간을 칠하면 모두가 만날 수 있는 시간이 바로 나와요.</p>
+        </div>
+        <button onclick="fetchAllData(true)" class="self-start sm:self-center shrink-0 px-4 py-2.5 bg-white text-indigo-600 hover:bg-indigo-50 font-semibold rounded-xl text-sm shadow transition flex items-center gap-2">
+          <i data-lucide="refresh-cw" class="w-4 h-4" id="refreshIcon"></i>
+          새로고침
+        </button>
+      </div>
+
+      <!-- 방 목록 헤더 -->
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+          <i data-lucide="door-open" class="w-5 h-5 text-indigo-600"></i>
+          열려있는 모임 방 <span id="roomCountBadge" class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">0</span>
+        </h3>
+        <button onclick="openAdminModal()" class="text-sm text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i> 새 방 만들기 (관리자)
+        </button>
+      </div>
+
+      <!-- 방 카드 리스트 -->
+      <div id="roomListContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- JS로 동적 렌더링 -->
+      </div>
+    </section>
+
+    <!-- [화면 2] 모임 방 상세 (달력 + 스터디 플래너 + 실시간 결과) -->
+    <section id="roomView" class="hidden space-y-6">
+      <!-- 상단 방 정보 및 뒤로가기 -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-start gap-3">
+          <button onclick="goHome()" class="p-2 mt-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+          </button>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span id="roomMonthBadge" class="px-2.5 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg">2026년 11월</span>
+              <h2 id="roomTitleDisplay" class="text-xl font-bold text-slate-900">모임 제목</h2>
+            </div>
+            <p id="roomDescDisplay" class="text-sm text-slate-500 mt-1">모임 설명</p>
+          </div>
+        </div>
+
+        <!-- 현재 참여자 이름 표시 & 변경 -->
+        <div class="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 self-start sm:self-center">
+          <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm" id="userAvatar">
+            나
+          </div>
+          <div class="pr-2">
+            <p class="text-[11px] text-slate-400 leading-none">내 별명</p>
+            <p class="text-sm font-bold text-slate-800" id="currentUserNameDisplay">미입력</p>
+          </div>
+          <button onclick="openNameModal()" class="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-xs font-semibold text-slate-600 transition">
+            변경
+          </button>
+        </div>
+      </div>
+
+      <!-- 실시간 베스트 매칭 요약 배너 -->
+      <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-emerald-900 flex items-center gap-2">
+            <i data-lucide="sparkles" class="w-5 h-5 text-emerald-600"></i>
+            실시간 모두가 만날 수 있는 황금 시간대 TOP 5
+          </h3>
+          <button onclick="fetchAllData(true)" class="text-xs font-semibold text-emerald-700 hover:underline flex items-center gap-1">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> 실시간 동기화
+          </button>
+        </div>
+        <div id="bestSlotsContainer" class="flex flex-wrap gap-2">
+          <!-- JS로 렌더링 -->
+        </div>
+      </div>
+
+      <!-- 메인 2단 레이아웃: 좌측(달력) / 우측(스터디 플래너 타임테이블) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 좌측: 달력 및 참여자 현황 (5칸) -->
+        <div class="lg:col-span-5 space-y-6">
+          <!-- 달력 카드 -->
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                <i data-lucide="calendar" class="w-4 h-4 text-indigo-600"></i>
+                날짜 선택
+              </h3>
+              <div class="flex items-center gap-1">
+                <button onclick="changeMonth(-1)" class="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600">
+                  <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                </button>
+                <span id="calendarMonthLabel" class="text-sm font-bold text-slate-700 px-2">2026. 11</span>
+                <button onclick="changeMonth(1)" class="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600">
+                  <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- 요일 헤더 -->
+            <div class="grid grid-cols-7 text-center text-xs font-semibold text-slate-400 mb-2">
+              <div class="text-rose-500">일</div>
+              <div>월</div>
+              <div>화</div>
+              <div>수</div>
+              <div>목</div>
+              <div>금</div>
+              <div class="text-blue-500">토</div>
+            </div>
+
+            <!-- 날짜 그리드 -->
+            <div id="calendarGrid" class="grid grid-cols-7 gap-1.5">
+              <!-- JS로 동적 생성 -->
+            </div>
+
+            <!-- 범례 -->
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block"></span>
+                <span>내가 칠한 날</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-sm bg-emerald-400 inline-block"></span>
+                <span>친구들 가능 인원 농도</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 현재 방 참여자 목록 카드 -->
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <h3 class="font-bold text-slate-800 text-sm mb-3 flex items-center justify-between">
+              <span class="flex items-center gap-2">
+                <i data-lucide="users" class="w-4 h-4 text-indigo-600"></i>
+                참여 중인 친구들
+              </span>
+              <span id="participantCount" class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">0명</span>
+            </h3>
+            <div id="participantsList" class="flex flex-wrap gap-2">
+              <!-- JS 렌더링 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 우측: 스터디 플래너 스타일 타임테이블 (7칸) -->
+        <div class="lg:col-span-7">
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col h-full">
+            <!-- 상단 컨트롤 바 -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+              <div>
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">STUDY PLANNER MODE</span>
+                <h3 id="selectedDateTitle" class="text-lg font-bold text-slate-900">날짜를 선택해주세요</h3>
+              </div>
+
+              <!-- 모드 전환 탭: 내 시간 색칠하기 vs 친구들 겹치는 시간 보기 -->
+              <div class="flex bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
+                <button id="tabMyPaint" onclick="setPlannerMode('paint')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition bg-white text-indigo-600 shadow-sm flex items-center gap-1.5">
+                  <i data-lucide="highlighter" class="w-3.5 h-3.5"></i>
+                  내 시간 칠하기
+                </button>
+                <button id="tabGroupView" onclick="setPlannerMode('group')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+                  <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+                  모두의 시간 겹쳐보기
+                </button>
+              </div>
+            </div>
+
+            <!-- 빠른 도구 버튼 (내 시간 칠하기 모드일 때만 표시) -->
+            <div id="paintToolbar" class="flex flex-wrap items-center justify-between gap-2 py-3 border-b border-slate-100 text-xs">
+              <p class="text-slate-500 flex items-center gap-1">
+                <i data-lucide="mouse-pointer-click" class="w-3.5 h-3.5 text-indigo-500"></i>
+                칸을 터치하거나 드래그해서 형광펜처럼 칠하세요!
+              </p>
+              <div class="flex items-center gap-1.5">
+                <button onclick="fillDayAll(true)" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-lg transition">하루 전체 가능</button>
+                <button onclick="fillDayAll(false)" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-lg transition">이 날 지우기</button>
+              </div>
+            </div>
+
+            <!-- 그룹 겹쳐보기 안내 바 -->
+            <div id="groupToolbar" class="hidden flex items-center justify-between py-3 border-b border-slate-100 text-xs">
+              <p class="text-slate-600 font-medium">색이 진할수록 많은 친구가 가능한 시간이에요! (칸을 누르면 누가 되는지 보여요)</p>
+              <div class="flex items-center gap-1 shrink-0">
+                <span class="text-[10px] text-slate-400">적음</span>
+                <span class="w-3 h-3 rounded bg-emerald-100 inline-block"></span>
+                <span class="w-3 h-3 rounded bg-emerald-300 inline-block"></span>
+                <span class="w-3 h-3 rounded bg-emerald-500 inline-block"></span>
+                <span class="w-3 h-3 rounded bg-emerald-700 inline-block"></span>
+                <span class="text-[10px] text-slate-400">전원</span>
+              </div>
+            </div>
+
+            <!-- 스터디 플래너 10분/30분 단위 그리드 영역 -->
+            <div class="mt-4 flex-1 overflow-y-auto max-h-[460px] pr-1 no-select" id="plannerScrollArea">
+              <div id="plannerGrid" class="space-y-1.5">
+                <!-- 08:00 ~ 23:30 시간표가 JS로 렌더링됨 -->
+              </div>
+            </div>
+
+            <!-- 선택된 시간대 상세 참여자 확인 박스 -->
+            <div id="slotDetailBox" class="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center justify-between">
+              <span class="text-slate-500" id="slotDetailText">시간 칸을 클릭하면 해당 시간에 가능한 친구 목록이 표시됩니다.</span>
+            </div>
+
+            <!-- 저장 버튼 -->
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+              <span class="text-xs text-slate-400" id="unsavedIndicator">변경사항이 자동/수동 저장됩니다.</span>
+              <button onclick="saveMySchedule()" id="saveBtn" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-bold rounded-xl shadow-md shadow-indigo-200 transition flex items-center gap-2 text-sm">
+                <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                내 가능 시간 저장하기
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== 모달 창 영역 ==================== -->
+
+  <!-- 1. 이름(별명) 입력 모달 -->
+  <div id="nameModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl space-y-4">
+      <div class="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto">
+        <i data-lucide="smile-plus" class="w-6 h-6"></i>
+      </div>
+      <div class="text-center">
+        <h3 class="text-lg font-bold text-slate-900">반가워요! 이름이 뭐예요?</h3>
+        <p class="text-xs text-slate-500 mt-1">친구들이 알아볼 수 있도록 이름이나 별명을 입력해주세요.<br>(같은 이름으로 다시 들어오면 내 시간표를 수정할 수 있어요)</p>
+      </div>
+      <input type="text" id="userNameInput" placeholder="예: 민수, 지은, 떡볶이대장" maxlength="12"
+        class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center font-bold text-slate-800"
+        onkeydown="if(event.key==='Enter') confirmUserName()">
+      <div class="flex gap-2">
+        <button onclick="closeModal('nameModal')" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition">취소</button>
+        <button onclick="confirmUserName()" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition">입장하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 관리자 모달 (비밀번호 0513 인증 후 방 생성/삭제) -->
+  <div id="adminModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-5 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <i data-lucide="shield-check" class="w-5 h-5 text-indigo-600"></i>
+          관리자 전용 방 관리
+        </h3>
+        <button onclick="closeModal('adminModal')" class="p-1 text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- 비밀번호 입력 단계 -->
+      <div id="adminAuthStep" class="space-y-4">
+        <p class="text-sm text-slate-600">모임 방을 만들거나 삭제하려면 관리자 비밀번호를 입력하세요.</p>
+        <input type="password" id="adminPasswordInput" placeholder="비밀번호 4자리 입력" maxlength="10"
+          class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center tracking-widest font-bold text-lg"
+          onkeydown="if(event.key==='Enter') verifyAdminPassword()">
+        <button onclick="verifyAdminPassword()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition">
+          관리자 인증하기
+        </button>
+      </div>
+
+      <!-- 인증 성공 후: 방 생성 & 기존 방 삭제 패널 -->
+      <div id="adminControlStep" class="hidden space-y-6">
+        <!-- 새 방 만들기 폼 -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+          <h4 class="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+            <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-600"></i>
+            새 모임 방 만들기
+          </h4>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">모임 이름 *</label>
+            <input type="text" id="newRoomTitle" placeholder="예: 12월 연말 홈파티 날짜 정하기" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">간단 메모 (선택)</label>
+            <input type="text" id="newRoomDesc" placeholder="예: 강남역 근처 저녁 식사 + 보드게임" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">기본 기준 년/월</label>
+            <input type="month" id="newRoomMonth" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <button onclick="createNewRoom()" id="createRoomBtn" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition">
+            방 생성하기
+          </button>
+        </div>
+
+        <!-- 기존 방 삭제 리스트 -->
+        <div class="space-y-2">
+          <h4 class="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+            <i data-lucide="trash-2" class="w-4 h-4 text-rose-500"></i>
+            개설된 방 목록 (삭제 관리)
+          </h4>
+          <div id="adminRoomDeleteList" class="space-y-2 max-h-48 overflow-y-auto">
+            <!-- JS 렌더링 -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 구글 시트 Apps Script 연동 설정 모달 -->
+  <div id="settingsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <i data-lucide="database" class="w-5 h-5 text-emerald-600"></i>
+          구글 시트 실시간 데이터베이스 연결
+        </h3>
+        <button onclick="closeModal('settingsModal')" class="p-1 text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="text-xs text-slate-600 space-y-2 bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200 leading-relaxed">
+        <p class="font-bold text-emerald-900">친구들과 실시간으로 데이터를 공유하려면:</p>
+        <ol class="list-decimal list-inside space-y-1">
+          <li>구글 스프레드시트에서 <b>[확장 프로그램] → [Apps Script]</b>를 엽니다.</li>
+          <li>함께 제공된 <code>Code.gs</code> 코드를 붙여넣고 저장합니다.</li>
+          <li><b>[배포] → [새 배포] → 유형: 웹 앱 → 액세스 권한: 모든 사용자</b>로 배포합니다.</li>
+          <li>발급된 <b>웹 앱 URL</b>을 아래 입력칸에 붙여넣고 저장하세요!</li>
+        </ol>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Google Apps Script 웹 앱 URL</label>
+        <input type="url" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/.../exec"
+          class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+
+      <div class="flex items-center justify-between pt-2 gap-2">
+        <button onclick="resetToDemoMode()" class="px-3 py-2 text-xs text-slate-500 hover:text-slate-800 underline">
+          URL 지우기 (로컬 데모 모드)
+        </button>
+        <div class="flex gap-2">
+          <button onclick="closeModal('settingsModal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs">닫기</button>
+          <button onclick="saveScriptUrl()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs">연결 및 저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 알림 컨테이너 (alert 대신 사용) -->
+  <div id="toastContainer" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 pointer-events-none w-full max-w-sm px-4"></div>
+
+  <script>
+    // =========================================================================
+    // 1. 전역 상태 관리 (State)
+    // =========================================================================
+    const ADMIN_PW = '0513';
+    const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzv1z-uzLgvX_7Yh8vi2alSF3LvgVE2UQkStXIo5KKvHKSjb-aDZYqWvaUNPu950RFsuQ/exec';
+    // 시간 슬롯 정의: 08:00 부터 23:30 까지 30분 단위 (총 32개 슬롯)
+    const TIME_SLOTS = [];
+    for (let h = 8; h <= 23; h++) {
+      const hh = String(h).padStart(2, '0');
+      TIME_SLOTS.push(`${hh}:00`);
+      TIME_SLOTS.push(`${hh}:30`);
+    }
+
+    let state = {
+      scriptUrl: localStorage.getItem('meetup_script_url') || DEFAULT_SCRIPT_URL,
+      rooms: [],
+      votes: [],
+      currentRoomId: null,
+      pendingRoomId: null,
+      currentUserName: localStorage.getItem('meetup_user_name') || '',
+      currentYear: new Date().getFullYear(),
+      currentMonth: new Date().getMonth() + 1, // 1 ~ 12
+      selectedDate: '', // 'YYYY-MM-DD'
+      mySlots: {}, // { 'YYYY-MM-DD': ['18:00', '18:30'] }
+      plannerMode: 'paint', // 'paint' | 'group'
+      isDragging: false,
+      dragPaintValue: true, // true: 칠하기, false: 지우기
+      isAdminAuthenticated: false
+    };
+
+    // =========================================================================
+    // 2. 초기화 및 데이터 통신 (Google Apps Script & 로컬 데모 폴백)
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      updateConnectionBadge();
+      
+      // 기본 방 생성 월 세팅
+      const now = new Date();
+      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      document.getElementById('newRoomMonth').value = ym;
+
+      // 마우스/터치 드래그 종료 이벤트 전역 등록
+      window.addEventListener('mouseup', () => { state.isDragging = false; });
+      window.addEventListener('touchend', () => { state.isDragging = false; });
+
+      // 초기 데이터 불러오기
+      fetchAllData(false);
+    });
+
+    function updateConnectionBadge() {
+      const badge = document.getElementById('connectionBadge');
+      if (state.scriptUrl) {
+        badge.textContent = '● 구글 시트 실시간 연동됨';
+        badge.className = 'text-[11px] text-emerald-600 font-semibold';
+      } else {
+        badge.textContent = '○ 로컬 데모 모드 (시트 연동 전)';
+        badge.className = 'text-[11px] text-amber-600 font-medium';
+      }
+    }
+
+    // 전체 데이터 조회 (방 목록 + 투표 내역)
+    async function fetchAllData(showToastMsg = false) {
+      const refreshIcon = document.getElementById('refreshIcon');
+      if (refreshIcon) refreshIcon.classList.add('animate-spin');
+
+      try {
+        if (state.scriptUrl) {
+          const response = await fetch(`${state.scriptUrl}?action=getData`);
+          const data = await response.json();
+          if (data.status === 'success') {
+            state.rooms = data.rooms || [];
+            state.votes = data.votes || [];
+            if (showToastMsg) showToast('구글 시트에서 최신 데이터를 불러왔습니다!', 'success');
+          } else {
+            throw new Error(data.message || '데이터 로드 실패');
+          }
+        } else {
+          // 로컬 데모 데이터 초기화 (최초 실행 시 샘플 데이터 제공)
+          const savedRooms = localStorage.getItem('demo_rooms');
+          const savedVotes = localStorage.getItem('demo_votes');
+          if (savedRooms) {
+            state.rooms = JSON.parse(savedRooms);
+            state.votes = savedVotes ? JSON.parse(savedVotes) : [];
+          } else {
+            const now = new Date();
+            const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const sampleDay = `${ym}-15`;
+            state.rooms = [
+              {
+                roomId: 'demo_room_1',
+                title: '이번 달 친구들 정기 모임 날짜 잡기!',
+                description: '편한 날짜랑 시간대를 스터디 플래너처럼 색칠해줘~',
+                yearMonth: ym
+              }
+            ];
+            state.votes = [
+              {
+                roomId: 'demo_room_1',
+                userName: '지민(예시)',
+                slots: { [sampleDay]: ['18:00', '18:30', '19:00', '19:30', '20:00'] }
+              },
+              {
+                roomId: 'demo_room_1',
+                userName: '현우(예시)',
+                slots: { [sampleDay]: ['19:00', '19:30', '20:00', '20:30'] }
+              }
+            ];
+            saveDemoToLocal();
+          }
+          if (showToastMsg) showToast('최신 상태로 새로고침 되었습니다.', 'info');
+        }
+
+        renderRoomList();
+        if (state.currentRoomId) {
+          syncCurrentUserSlotsFromVotes();
+          renderRoomDetail();
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('데이터를 불러오는 중 오류가 발생했습니다. URL을 확인해주세요.', 'error');
+      } finally {
+        if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+      }
+    }
+
+    function saveDemoToLocal() {
+      localStorage.setItem('demo_rooms', JSON.stringify(state.rooms));
+      localStorage.setItem('demo_votes', JSON.stringify(state.votes));
+    }
+
+    // =========================================================================
+    // 3. 화면 전환 및 방 목록 렌더링
+    // =========================================================================
+    function goHome() {
+      state.currentRoomId = null;
+      document.getElementById('roomView').classList.add('hidden');
+      document.getElementById('homeView').classList.remove('hidden');
+      renderRoomList();
+    }
+
+    function renderRoomList() {
+      const container = document.getElementById('roomListContainer');
+      document.getElementById('roomCountBadge').textContent = state.rooms.length;
+
+      if (state.rooms.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full bg-white rounded-2xl p-10 border border-dashed border-slate-300 text-center space-y-3">
+            <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+              <i data-lucide="calendar-off" class="w-6 h-6"></i>
+            </div>
+            <p class="font-bold text-slate-700">아직 만들어진 모임 방이 없어요!</p>
+            <p class="text-xs text-slate-500">우측 상단 [관리자] 버튼을 눌러 첫 번째 약속 방을 만들어보세요.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      container.innerHTML = state.rooms.map(room => {
+        const roomVotes = state.votes.filter(v => v.roomId === room.roomId);
+        const participantNames = roomVotes.map(v => v.userName);
+        
+        return `
+          <div onclick="tryEnterRoom('${room.roomId}')" 
+               class="group bg-white rounded-2xl p-5 border border-slate-200 hover:border-indigo-400 hover:shadow-md transition cursor-pointer flex flex-col justify-between gap-4">
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg">${room.yearMonth || '일정 조율'}</span>
+                <span class="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                  <i data-lucide="users" class="w-3.5 h-3.5 text-indigo-500"></i>
+                  ${roomVotes.length}명 참여중
+                </span>
+              </div>
+              <h4 class="font-bold text-lg text-slate-900 group-hover:text-indigo-600 transition">${escapeHtml(room.title)}</h4>
+              <p class="text-xs text-slate-500 mt-1 line-clamp-2">${escapeHtml(room.description || '가능한 날짜와 시간대를 체크해주세요!')}</p>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+              <div class="flex items-center gap-1 overflow-hidden">
+                ${participantNames.length > 0 
+                  ? participantNames.slice(0, 4).map(name => `<span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[11px] font-medium truncate max-w-[70px]">${escapeHtml(name)}</span>`).join('') + (participantNames.length > 4 ? `<span class="text-[11px] text-slate-400">+${participantNames.length - 4}</span>` : '')
+                  : '<span class="text-xs text-slate-400">첫 번째로 참여해보세요!</span>'
+                }
+              </div>
+              <span class="text-xs font-bold text-indigo-600 flex items-center gap-1 shrink-0 group-hover:translate-x-0.5 transition">
+                참여하기 <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    // 방 입장 시도 -> 이름이 없으면 이름 입력 모달 먼저 띄움
+    function tryEnterRoom(roomId) {
+      state.pendingRoomId = roomId;
+      if (!state.currentUserName) {
+        openNameModal();
+      } else {
+        enterRoom(roomId);
+      }
+    }
+
+    function openNameModal() {
+      document.getElementById('userNameInput').value = state.currentUserName || '';
+      document.getElementById('nameModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('userNameInput').focus(), 100);
+    }
+
+    function confirmUserName() {
+      const input = document.getElementById('userNameInput').value.trim();
+      if (!input) {
+        showToast('이름이나 별명을 입력해주세요!', 'error');
+        return;
+      }
+      state.currentUserName = input;
+      localStorage.setItem('meetup_user_name', input);
+      closeModal('nameModal');
+
+      if (state.pendingRoomId) {
+        enterRoom(state.pendingRoomId);
+        state.pendingRoomId = null;
+      } else if (state.currentRoomId) {
+        syncCurrentUserSlotsFromVotes();
+        renderRoomDetail();
+      }
+    }
+
+    function enterRoom(roomId) {
+      const room = state.rooms.find(r => r.roomId === roomId);
+      if (!room) return;
+
+      state.currentRoomId = roomId;
+      
+      // 방의 기준 년/월 설정
+      if (room.yearMonth && room.yearMonth.includes('-')) {
+        const [y, m] = room.yearMonth.split('-').map(Number);
+        state.currentYear = y;
+        state.currentMonth = m;
+      }
+
+      // 기본 선택 날짜 설정 (해당 월의 1일 또는 오늘)
+      const today = new Date();
+      if (today.getFullYear() === state.currentYear && (today.getMonth() + 1) === state.currentMonth) {
+        state.selectedDate = formatDate(state.currentYear, state.currentMonth, today.getDate());
+      } else {
+        state.selectedDate = formatDate(state.currentYear, state.currentMonth, 1);
+      }
+
+      syncCurrentUserSlotsFromVotes();
+
+      document.getElementById('homeView').classList.add('hidden');
+      document.getElementById('roomView').classList.remove('hidden');
+      
+      renderRoomDetail();
+    }
+
+    // 기존 투표 데이터에서 현재 사용자의 시간표 불러오기
+    function syncCurrentUserSlotsFromVotes() {
+      const myVote = state.votes.find(
+        v => v.roomId === state.currentRoomId && v.userName === state.currentUserName
+      );
+      state.mySlots = myVote && myVote.slots ? JSON.parse(JSON.stringify(myVote.slots)) : {};
+    }
+
+    // =========================================================================
+    // 4. 모임 방 상세 렌더링 (달력 + 스터디 플래너 + 황금 시간대 계산)
+    // =========================================================================
+    function renderRoomDetail() {
+      const room = state.rooms.find(r => r.roomId === state.currentRoomId);
+      if (!room) return;
+
+      document.getElementById('roomMonthBadge').textContent = room.yearMonth || '';
+      document.getElementById('roomTitleDisplay').textContent = room.title;
+      document.getElementById('roomDescDisplay').textContent = room.description || '달력에서 날짜를 누르고 가능한 시간을 색칠해주세요.';
+      
+      document.getElementById('currentUserNameDisplay').textContent = state.currentUserName;
+      document.getElementById('userAvatar').textContent = state.currentUserName.slice(0, 1);
+
+      renderParticipants();
+      renderBestSlots();
+      renderCalendar();
+      renderPlanner();
+    }
+
+    // 현재 방 참여자 배지 목록
+    function renderParticipants() {
+      const roomVotes = state.votes.filter(v => v.roomId === state.currentRoomId);
+      const allNames = new Set(roomVotes.map(v => v.userName));
+      if (state.currentUserName) allNames.add(state.currentUserName);
+
+      const listEl = document.getElementById('participantsList');
+      document.getElementById('participantCount').textContent = `${allNames.size}명`;
+
+      listEl.innerHTML = Array.from(allNames).map(name => {
+        const isMe = name === state.currentUserName;
+        return `
+          <span class="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ${isMe ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700'}">
+            <span class="w-1.5 h-1.5 rounded-full ${isMe ? 'bg-emerald-300' : 'bg-slate-400'}"></span>
+            ${escapeHtml(name)} ${isMe ? '(나)' : ''}
+          </span>
+        `;
+      }).join('');
+    }
+
+    // 실시간 모두가 만날 수 있는 황금 시간대 TOP 5 계산
+    function renderBestSlots() {
+      const roomVotes = getMergedVotesForCurrentRoom();
+      const totalPeople = roomVotes.length;
+      const container = document.getElementById('bestSlotsContainer');
+
+      if (totalPeople === 0) {
+        container.innerHTML = `<p class="text-xs text-emerald-700">아직 등록된 일정이 없어요. 첫 번째로 가능 시간을 색칠해보세요!</p>`;
+        return;
+      }
+
+      // 날짜+시간별 가능 인원 집계
+      const slotCounts = []; // { date, time, users: [] }
+      const map = {};
+
+      roomVotes.forEach(vote => {
+        Object.entries(vote.slots || {}).forEach(([date, times]) => {
+          (times || []).forEach(time => {
+            const key = `${date}|${time}`;
+            if (!map[key]) map[key] = { date, time, users: [] };
+            map[key].users.push(vote.userName);
+          });
+        });
+      });
+
+      Object.values(map).forEach(item => {
+        if (item.users.length > 0) slotCounts.push(item);
+      });
+
+      // 인원 수 많은 순 -> 날짜 빠른 순 -> 시간 빠른 순 정렬
+      slotCounts.sort((a, b) => {
+        if (b.users.length !== a.users.length) return b.users.length - a.users.length;
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        return a.time.localeCompare(b.time);
+      });
+
+      if (slotCounts.length === 0) {
+        container.innerHTML = `<p class="text-xs text-emerald-700">아직 색칠된 시간대가 없어요. 아래 달력과 시간표에서 가능한 시간을 칠해보세요!</p>`;
+        return;
+      }
+
+      const top5 = slotCounts.slice(0, 5);
+      container.innerHTML = top5.map(item => {
+        const isAll = item.users.length === totalPeople && totalPeople > 1;
+        const [, m, d] = item.date.split('-');
+        return `
+          <button onclick="jumpToDate('${item.date}')" 
+            class="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 border ${isAll ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-white text-emerald-900 border-emerald-200 hover:bg-emerald-100'}">
+            <span>${Number(m)}/${Number(d)} ${item.time}</span>
+            <span class="px-1.5 py-0.5 rounded-md text-[10px] ${isAll ? 'bg-white text-emerald-700' : 'bg-emerald-100 text-emerald-800'}">
+              ${item.users.length}/${totalPeople}명 ${isAll ? '전원가능!' : ''}
+            </span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function jumpToDate(dateStr) {
+      const [y, m] = dateStr.split('-').map(Number);
+      state.currentYear = y;
+      state.currentMonth = m;
+      state.selectedDate = dateStr;
+      renderCalendar();
+      renderPlanner();
+    }
+
+    // 현재 편집 중인 내 시간표(state.mySlots)를 포함한 최신 투표 목록 반환
+    function getMergedVotesForCurrentRoom() {
+      const others = state.votes.filter(
+        v => v.roomId === state.currentRoomId && v.userName !== state.currentUserName
+      );
+      if (state.currentUserName) {
+        others.push({
+          roomId: state.currentRoomId,
+          userName: state.currentUserName,
+          slots: state.mySlots
+        });
+      }
+      return others;
+    }
+
+    // =========================================================================
+    // 5. 달력 렌더링 및 인터랙션
+    // =========================================================================
+    function changeMonth(delta) {
+      state.currentMonth += delta;
+      if (state.currentMonth > 12) {
+        state.currentMonth = 1;
+        state.currentYear++;
+      } else if (state.currentMonth < 1) {
+        state.currentMonth = 12;
+        state.currentYear--;
+      }
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const year = state.currentYear;
+      const month = state.currentMonth;
+      document.getElementById('calendarMonthLabel').textContent = `${year}. ${String(month).padStart(2, '0')}`;
+
+      const firstDay = new Date(year, month - 1, 1).getDay(); // 0(일) ~ 6(토)
+      const daysInMonth = new Date(year, month, 0).getDate();
+
+      const mergedVotes = getMergedVotesForCurrentRoom();
+      const totalPeople = Math.max(mergedVotes.length, 1);
+
+      const grid = document.getElementById('calendarGrid');
+      let html = '';
+
+      // 빈 칸 채우기
+      for (let i = 0; i < firstDay; i++) {
+        html += `<div class="h-12"></div>`;
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = formatDate(year, month, day);
+        const isSelected = state.selectedDate === dateStr;
+        const myCount = (state.mySlots[dateStr] || []).length;
+
+        // 해당 날짜에 한 타임이라도 가능한 친구 수 계산
+        let availablePeopleCount = 0;
+        mergedVotes.forEach(v => {
+          if (v.slots && v.slots[dateStr] && v.slots[dateStr].length > 0) {
+            availablePeopleCount++;
+          }
+        });
+
+        // 히트맵 배경색 계산
+        let heatBg = 'bg-slate-50 hover:bg-slate-100 text-slate-700';
+        if (availablePeopleCount > 0) {
+          const ratio = availablePeopleCount / totalPeople;
+          if (ratio >= 1 && totalPeople > 1) heatBg = 'bg-emerald-200/80 text-emerald-950 font-bold';
+          else if (ratio >= 0.5) heatBg = 'bg-emerald-100 text-emerald-900 font-semibold';
+          else heatBg = 'bg-emerald-50 text-emerald-800';
+        }
+
+        const ringClass = isSelected ? 'ring-2 ring-indigo-600 bg-indigo-50/70' : '';
+        const dayOfWeek = (firstDay + day - 1) % 7;
+        const textColor = dayOfWeek === 0 ? 'text-rose-500' : (dayOfWeek === 6 ? 'text-blue-600' : '');
+
+        html += `
+          <button onclick="selectDate('${dateStr}')"
+            class="h-12 rounded-xl flex flex-col items-center justify-center relative transition ${heatBg} ${ringClass}">
+            <span class="text-sm ${isSelected ? 'font-extrabold text-indigo-700' : textColor}">${day}</span>
+            <div class="flex items-center gap-0.5 mt-0.5 h-2">
+              ${myCount > 0 ? `<span class="w-1.5 h-1.5 rounded-full bg-indigo-600" title="내가 체크한 날"></span>` : ''}
+              ${availablePeopleCount > 0 ? `<span class="text-[9px] leading-none text-emerald-700 font-bold">${availablePeopleCount}명</span>` : ''}
+            </div>
+          </button>
+        `;
+      }
+
+      grid.innerHTML = html;
+    }
+
+    function selectDate(dateStr) {
+      state.selectedDate = dateStr;
+      renderCalendar();
+      renderPlanner();
+    }
+
+    // =========================================================================
+    // 6. 스터디 플래너 타임테이블 (형광펜 드래그 색칠 & 겹쳐보기)
+    // =========================================================================
+    function setPlannerMode(mode) {
+      state.plannerMode = mode;
+      const tabPaint = document.getElementById('tabMyPaint');
+      const tabGroup = document.getElementById('tabGroupView');
+      const paintToolbar = document.getElementById('paintToolbar');
+      const groupToolbar = document.getElementById('groupToolbar');
+
+      if (mode === 'paint') {
+        tabPaint.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition bg-white text-indigo-600 shadow-sm flex items-center gap-1.5';
+        tabGroup.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900 flex items-center gap-1.5';
+        paintToolbar.classList.remove('hidden');
+        groupToolbar.classList.add('hidden');
+      } else {
+        tabGroup.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition bg-white text-emerald-600 shadow-sm flex items-center gap-1.5';
+        tabPaint.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900 flex items-center gap-1.5';
+        groupToolbar.classList.remove('hidden');
+        paintToolbar.classList.add('hidden');
+      }
+      renderPlanner();
+    }
+
+    function renderPlanner() {
+      if (!state.selectedDate) return;
+
+      const [y, m, d] = state.selectedDate.split('-');
+      const dateObj = new Date(Number(y), Number(m) - 1, Number(d));
+      const weekNames = ['일', '월', '화', '수', '목', '금', '토'];
+      document.getElementById('selectedDateTitle').textContent = `${Number(m)}월 ${Number(d)}일 (${weekNames[dateObj.getDay()]}) 시간표`;
+
+      const myDaySlots = new Set(state.mySlots[state.selectedDate] || []);
+      const mergedVotes = getMergedVotesForCurrentRoom();
+      const totalPeople = Math.max(mergedVotes.length, 1);
+
+      const grid = document.getElementById('plannerGrid');
+      
+      // 1시간 단위로 묶어서 좌측 시간 라벨 + 우측 2개의 30분 블록(스터디 플래너 스타일) 렌더링
+      let html = '';
+      for (let i = 0; i < TIME_SLOTS.length; i += 2) {
+        const slot1 = TIME_SLOTS[i];     // HH:00
+        const slot2 = TIME_SLOTS[i + 1]; // HH:30
+        const hourLabel = slot1.split(':')[0] + '시';
+
+        html += `
+          <div class="flex items-stretch gap-2">
+            <div class="w-11 shrink-0 text-right pr-1 py-2 text-xs font-bold text-slate-400 select-none">
+              ${hourLabel}
+            </div>
+            <div class="flex-1 grid grid-cols-2 gap-1.5">
+              ${renderSingleTimeBlock(slot1, myDaySlots, mergedVotes, totalPeople)}
+              ${renderSingleTimeBlock(slot2, myDaySlots, mergedVotes, totalPeople)}
+            </div>
+          </div>
+        `;
+      }
+
+      grid.innerHTML = html;
+    }
+
+    function renderSingleTimeBlock(timeStr, myDaySlots, mergedVotes, totalPeople) {
+      // 이 시간에 가능한 친구들 목록
+      const availableUsers = mergedVotes
+        .filter(v => v.slots && v.slots[state.selectedDate] && v.slots[state.selectedDate].includes(timeStr))
+        .map(v => v.userName);
+
+      const isMySelected = myDaySlots.has(timeStr);
+
+      if (state.plannerMode === 'paint') {
+        // [내 시간 칠하기 모드] - 형광펜 스타일
+        const activeClass = isMySelected
+          ? 'bg-indigo-500 text-white border-indigo-600 shadow-xs font-bold'
+          : 'bg-slate-50 hover:bg-indigo-50/70 text-slate-500 border-slate-200';
+
+        return `
+          <div 
+            onmousedown="startPaintSlot('${timeStr}')"
+            onmouseenter="dragPaintSlot('${timeStr}')"
+            ontouchstart="handleTouchSlot(event, '${timeStr}')"
+            class="h-10 rounded-xl border px-3 flex items-center justify-between cursor-pointer transition-colors ${activeClass}">
+            <span class="text-xs">${timeStr}</span>
+            <span class="text-[10px] ${isMySelected ? 'text-indigo-100' : 'text-slate-400'}">
+              ${availableUsers.length > 0 ? `${availableUsers.length}명 가능` : ''}
+            </span>
+          </div>
+        `;
+      } else {
+        // [모두의 시간 겹쳐보기 모드] - 히트맵 스타일
+        const count = availableUsers.length;
+        const ratio = count / totalPeople;
+        let heatClass = 'bg-slate-50 text-slate-400 border-slate-200';
+        if (count > 0) {
+          if (ratio >= 1 && totalPeople > 1) heatClass = 'bg-emerald-600 text-white border-emerald-700 font-bold shadow-xs';
+          else if (ratio >= 0.66) heatClass = 'bg-emerald-400 text-emerald-950 border-emerald-500 font-bold';
+          else if (ratio >= 0.33) heatClass = 'bg-emerald-200 text-emerald-900 border-emerald-300 font-semibold';
+          else heatClass = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        }
+
+        return `
+          <div onclick="showSlotParticipants('${timeStr}')"
+            class="h-10 rounded-xl border px-3 flex items-center justify-between cursor-pointer transition ${heatClass}">
+            <span class="text-xs">${timeStr}</span>
+            <span class="text-[11px] font-bold">
+              ${count > 0 ? `${count}/${totalPeople}명` : '-'}
+            </span>
+          </div>
+        `;
+      }
+    }
+
+    // 드래그/클릭으로 시간 블록 색칠하기
+    function startPaintSlot(timeStr) {
+      state.isDragging = true;
+      const currentList = state.mySlots[state.selectedDate] || [];
+      const exists = currentList.includes(timeStr);
+      state.dragPaintValue = !exists; // 이미 칠해져 있으면 지우기 모드로, 아니면 칠하기 모드로
+      applyPaintSlot(timeStr, state.dragPaintValue);
+    }
+
+    function dragPaintSlot(timeStr) {
+      if (!state.isDragging) return;
+      applyPaintSlot(timeStr, state.dragPaintValue);
+    }
+
+    function handleTouchSlot(e, timeStr) {
+      e.preventDefault();
+      const currentList = state.mySlots[state.selectedDate] || [];
+      const exists = currentList.includes(timeStr);
+      applyPaintSlot(timeStr, !exists);
+    }
+
+    function applyPaintSlot(timeStr, shouldSelect) {
+      if (!state.mySlots[state.selectedDate]) {
+        state.mySlots[state.selectedDate] = [];
+      }
+      const list = state.mySlots[state.selectedDate];
+      const idx = list.indexOf(timeStr);
+
+      if (shouldSelect && idx === -1) {
+        list.push(timeStr);
+        list.sort();
+      } else if (!shouldSelect && idx !== -1) {
+        list.splice(idx, 1);
+      }
+
+      if (list.length === 0) {
+        delete state.mySlots[state.selectedDate];
+      }
+
+      document.getElementById('unsavedIndicator').textContent = '● 저장되지 않은 변경사항이 있어요!';
+      document.getElementById('unsavedIndicator').className = 'text-xs text-amber-600 font-semibold';
+
+      renderPlanner();
+      renderCalendar();
+      renderBestSlots();
+      showSlotParticipants(timeStr);
+    }
+
+    // 하루 전체 가능 / 지우기 버튼
+    function fillDayAll(selectAll) {
+      if (!state.selectedDate) return;
+      if (selectAll) {
+        state.mySlots[state.selectedDate] = [...TIME_SLOTS];
+      } else {
+        delete state.mySlots[state.selectedDate];
+      }
+      document.getElementById('unsavedIndicator').textContent = '● 저장되지 않은 변경사항이 있어요!';
+      document.getElementById('unsavedIndicator').className = 'text-xs text-amber-600 font-semibold';
+      renderPlanner();
+      renderCalendar();
+      renderBestSlots();
+    }
+
+    // 특정 시간 칸 클릭 시 가능한 친구 목록 표시
+    function showSlotParticipants(timeStr) {
+      const mergedVotes = getMergedVotesForCurrentRoom();
+      const availableUsers = mergedVotes
+        .filter(v => v.slots && v.slots[state.selectedDate] && v.slots[state.selectedDate].includes(timeStr))
+        .map(v => v.userName);
+
+      const box = document.getElementById('slotDetailText');
+      if (availableUsers.length === 0) {
+        box.innerHTML = `<span class="font-bold text-slate-700">${timeStr}</span>에는 아직 가능한 친구가 없습니다.`;
+      } else {
+        box.innerHTML = `<span class="font-bold text-indigo-600">${timeStr}</span> 가능 친구 (${availableUsers.length}명): <span class="font-bold text-slate-800">${availableUsers.map(escapeHtml).join(', ')}</span>`;
+      }
+    }
+
+    // =========================================================================
+    // 7. 내 가능 시간 저장하기 (Google Apps Script 전송)
+    // =========================================================================
+    async function saveMySchedule() {
+      if (!state.currentRoomId || !state.currentUserName) return;
+
+      const saveBtn = document.getElementById('saveBtn');
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 저장 중...`;
+      lucide.createIcons();
+
+      try {
+        if (state.scriptUrl) {
+          const res = await fetch(state.scriptUrl, {
+            method: 'POST',
+            body: JSON.stringify({
+              action: 'saveAvailability',
+              roomId: state.currentRoomId,
+              userName: state.currentUserName,
+              slots: state.mySlots
+            })
+          });
+          const data = await res.json();
+          if (data.status !== 'success') throw new Error(data.message || '저장 실패');
+        }
+
+        // 로컬 상태 업데이트
+        const idx = state.votes.findIndex(
+          v => v.roomId === state.currentRoomId && v.userName === state.currentUserName
+        );
+        const newRecord = {
+          roomId: state.currentRoomId,
+          userName: state.currentUserName,
+          slots: JSON.parse(JSON.stringify(state.mySlots))
+        };
+        if (idx >= 0) state.votes[idx] = newRecord;
+        else state.votes.push(newRecord);
+
+        if (!state.scriptUrl) saveDemoToLocal();
+
+        document.getElementById('unsavedIndicator').textContent = '✓ 저장 완료! 친구들과 공유됩니다.';
+        document.getElementById('unsavedIndicator').className = 'text-xs text-emerald-600 font-semibold';
+        showToast(`${state.currentUserName}님의 가능 시간이 저장되었습니다!`, 'success');
+        
+        renderParticipants();
+        renderBestSlots();
+      } catch (err) {
+        console.error(err);
+        showToast('저장 중 오류가 발생했습니다. 인터넷 또는 시트 연결을 확인하세요.', 'error');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4"></i> 내 가능 시간 저장하기`;
+        lucide.createIcons();
+      }
+    }
+
+    // =========================================================================
+    // 8. 관리자 기능 (비밀번호 0513 확인, 방 추가 및 삭제)
+    // =========================================================================
+    function openAdminModal() {
+      document.getElementById('adminModal').classList.remove('hidden');
+      if (state.isAdminAuthenticated) {
+        document.getElementById('adminAuthStep').classList.add('hidden');
+        document.getElementById('adminControlStep').classList.remove('hidden');
+        renderAdminRoomDeleteList();
+      } else {
+        document.getElementById('adminAuthStep').classList.remove('hidden');
+        document.getElementById('adminControlStep').classList.add('hidden');
+        document.getElementById('adminPasswordInput').value = '';
+        setTimeout(() => document.getElementById('adminPasswordInput').focus(), 100);
+      }
+    }
+
+    function verifyAdminPassword() {
+      const pw = document.getElementById('adminPasswordInput').value.trim();
+      if (pw === ADMIN_PW) {
+        state.isAdminAuthenticated = true;
+        document.getElementById('adminAuthStep').classList.add('hidden');
+        document.getElementById('adminControlStep').classList.remove('hidden');
+        renderAdminRoomDeleteList();
+        showToast('관리자 인증에 성공했습니다!', 'success');
+      } else {
+        showToast('비밀번호가 올바르지 않습니다.', 'error');
+      }
+    }
+
+    async function createNewRoom() {
+      const title = document.getElementById('newRoomTitle').value.trim();
+      const description = document.getElementById('newRoomDesc').value.trim();
+      const yearMonth = document.getElementById('newRoomMonth').value;
+
+      if (!title) {
+        showToast('모임 이름을 입력해주세요!', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('createRoomBtn');
+      btn.disabled = true;
+      btn.textContent = '생성 중...';
+
+      try {
+        let newRoomId = 'room_' + Date.now();
+        if (state.scriptUrl) {
+          const res = await fetch(state.scriptUrl, {
+            method: 'POST',
+            body: JSON.stringify({
+              action: 'createRoom',
+              password: ADMIN_PW,
+              title,
+              description,
+              yearMonth
+            })
+          });
+          const data = await res.json();
+          if (data.status !== 'success') throw new Error(data.message);
+          newRoomId = data.roomId;
+        }
+
+        state.rooms.push({ roomId: newRoomId, title, description, yearMonth });
+        if (!state.scriptUrl) saveDemoToLocal();
+
+        document.getElementById('newRoomTitle').value = '';
+        document.getElementById('newRoomDesc').value = '';
+        renderRoomList();
+        renderAdminRoomDeleteList();
+        showToast('새 모임 방이 만들어졌습니다!', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('방 생성에 실패했습니다.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '방 생성하기';
+      }
+    }
+
+    function renderAdminRoomDeleteList() {
+      const container = document.getElementById('adminRoomDeleteList');
+      if (state.rooms.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-3">개설된 방이 없습니다.</p>`;
+        return;
+      }
+
+      container.innerHTML = state.rooms.map(room => `
+        <div class="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-xl text-xs">
+          <div class="truncate pr-2">
+            <span class="font-bold text-slate-800">${escapeHtml(room.title)}</span>
+            <span class="text-slate-400 ml-1">(${room.yearMonth || ''})</span>
+          </div>
+          <button onclick="deleteRoom('${room.roomId}')" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-lg shrink-0 transition">
+            삭제
+          </button>
+        </div>
+      `).join('');
+    }
+
+    async function deleteRoom(roomId) {
+      try {
+        if (state.scriptUrl) {
+          const res = await fetch(state.scriptUrl, {
+            method: 'POST',
+            body: JSON.stringify({
+              action: 'deleteRoom',
+              password: ADMIN_PW,
+              roomId
+            })
+          });
+          const data = await res.json();
+          if (data.status !== 'success') throw new Error(data.message);
+        }
+
+        state.rooms = state.rooms.filter(r => r.roomId !== roomId);
+        state.votes = state.votes.filter(v => v.roomId !== roomId);
+        if (!state.scriptUrl) saveDemoToLocal();
+
+        if (state.currentRoomId === roomId) {
+          goHome();
+        }
+        renderRoomList();
+        renderAdminRoomDeleteList();
+        showToast('모임 방이 삭제되었습니다.', 'info');
+      } catch (err) {
+        console.error(err);
+        showToast('방 삭제 중 오류가 발생했습니다.', 'error');
+      }
+    }
+
+    // =========================================================================
+    // 9. 구글 시트 연동 URL 설정 모달 & 유틸리티
+    // =========================================================================
+    function openSettingsModal() {
+      document.getElementById('scriptUrlInput').value = state.scriptUrl;
+      document.getElementById('settingsModal').classList.remove('hidden');
+    }
+
+    function saveScriptUrl() {
+      const url = document.getElementById('scriptUrlInput').value.trim();
+      if (url && !url.startsWith('https://script.google.com/')) {
+        showToast('올바른 Google Apps Script 웹 앱 URL을 입력해주세요.', 'error');
+        return;
+      }
+      state.scriptUrl = url;
+      localStorage.setItem('meetup_script_url', url);
+      updateConnectionBadge();
+      closeModal('settingsModal');
+      fetchAllData(true);
+    }
+
+    function resetToDemoMode() {
+      state.scriptUrl = DEFAULT_SCRIPT_URL;
+      localStorage.removeItem('meetup_script_url');
+      document.getElementById('scriptUrlInput').value = DEFAULT_SCRIPT_URL;
+      updateConnectionBadge();
+      closeModal('settingsModal');
+      fetchAllData(true);
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.add('hidden');
+    }
+
+    function formatDate(y, m, d) {
+      return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // 커스텀 토스트 메시지 (alert 대체)
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-600 text-white',
+        error: 'bg-rose-600 text-white',
+        info: 'bg-slate-800 text-white'
+      };
+
+      toast.className = `${colors[type] || colors.info} px-4 py-3 rounded-xl shadow-lg text-xs font-bold flex items-center justify-center text-center transition-all duration-300 transform translate-y-2 opacity-0`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 2800);
+    }
+  </script>
+</body>
+</html>
