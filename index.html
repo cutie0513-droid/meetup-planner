@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>애들아! 우리 좀 만나보자~</title>
+  <title>모여라! 우리들의 약속 플래너</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Google Fonts: Pretendard & Inter -->
@@ -305,7 +305,7 @@
         <h3 class="text-lg font-bold text-slate-900">반가워요! 이름이 뭐예요?</h3>
         <p class="text-xs text-slate-500 mt-1">친구들이 알아볼 수 있도록 이름이나 별명을 입력해주세요.<br>(같은 이름으로 다시 들어오면 내 시간표를 수정할 수 있어요)</p>
       </div>
-      <input type="text" id="userNameInput" placeholder="예: 혬니, 뚜, 뽀, 연쟌" maxlength="12"
+      <input type="text" id="userNameInput" placeholder="예: 민수, 지은, 떡볶이대장" maxlength="12"
         class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center font-bold text-slate-800"
         onkeydown="if(event.key==='Enter') confirmUserName()">
       <div class="flex gap-2">
@@ -427,7 +427,7 @@
     // 1. 전역 상태 관리 (State)
     // =========================================================================
     const ADMIN_PW = '0513';
-    const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzv1z-uzLgvX_7Yh8vi2alSF3LvgVE2UQkStXIo5KKvHKSjb-aDZYqWvaUNPu950RFsuQ/exec';
+    const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby9lPBWuqZha4GmlURvXmP_vn-fAYoAeaDaxOkN57kDak6sNUnd1x_VbT5rnq0EDtx-/exec';
     // 시간 슬롯 정의: 08:00 부터 23:30 까지 30분 단위 (총 32개 슬롯)
     const TIME_SLOTS = [];
     for (let h = 8; h <= 23; h++) {
